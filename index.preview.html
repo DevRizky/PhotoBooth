@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOOTH. — Personal Photo Booth Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --ink: #18171c;
+            --ink-soft: #221f26;
+            --ink-softer: #2c2833;
+            --paper: #f6f1e7;
+            --paper-dim: #eae2d2;
+            --amber: #e8a33d;
+            --amber-deep: #c97a2b;
+            --red: #d6524a;
+            --line: rgba(246, 241, 231, 0.12);
+            --line-strong: rgba(246, 241, 231, 0.22);
+            --text-on-ink: #f6f1e7;
+            --text-on-ink-dim: #a8a29a;
+            --text-on-paper: #221e1a;
+            --text-on-paper-dim: #6b6357;
+            --shadow-1: rgba(16, 11, 6, 0.55);
+            --shadow-2: rgba(16, 11, 6, 0.38);
+            --radius-lg: 22px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+        }
+
+        body {
+            margin: 0;
+            background: var(--ink);
+            color: var(--text-on-ink);
+            font-family: 'Space Grotesk', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        ::selection {
+            background: var(--amber);
+            color: var(--ink);
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--amber);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .display {
+            font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 0.01em;
+        }
+
+        /* ---------- film grain, fixed over everything ---------- */
+        .grain {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+            opacity: 0.05;
+            mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        /* ---------- background texture: sprocket rails, both edges ---------- */
+        .rail {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            width: 34px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-evenly;
+            z-index: 0;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .rail.left {
+            left: 0;
+        }
+
+        .rail.right {
+            right: 0;
+        }
+
+        .rail span {
+            width: 9px;
+            height: 9px;
+            border-radius: 2px;
+            background: var(--line-strong);
+        }
+
+        @media (max-width:760px) {
+            .rail {
+                display: none;
+            }
+        }
+
+        .wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 70px;
+            position: relative;
+            z-index: 1;
+        }
+
+        @media (max-width:760px) {
+            .wrap {
+                padding: 0 18px;
+            }
+        }
+
+        /* ---------- top nav ---------- */
+        .topnav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 28px 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 26px;
+            letter-spacing: 0.04em;
+        }
+
+        .brand-mark {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2px solid var(--amber);
+            position: relative;
+            flex: none;
+        }
+
+        .brand-mark::after {
+            content: "";
+            position: absolute;
+            inset: 6px;
+            border-radius: 50%;
+            background: var(--amber);
+        }
+
+        .navtag {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--text-on-ink-dim);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot-live {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #7fbf8f;
+            box-shadow: 0 0 0 3px rgba(127, 191, 143, 0.18);
+        }
+
+        /* ---------- hero ---------- */
+        .hero {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 60px;
+            align-items: center;
+            padding: 88px 0 96px;
+        }
+
+        @media (max-width:900px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding: 56px 0 64px;
+                gap: 44px;
+            }
+        }
+
+        .eyebrow {
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--amber);
+            margin: 0 0 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 22px;
+            height: 1px;
+            background: var(--amber);
+            display: inline-block;
+        }
+
+        .hero h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(52px, 7vw, 92px);
+            line-height: 0.94;
+            letter-spacing: 0.005em;
+            margin: 0 0 26px;
+            text-wrap: balance;
+        }
+
+        .hero h1 em {
+            font-style: normal;
+            color: var(--amber);
+        }
+
+        .hero p {
+            font-size: 17px;
+            line-height: 1.6;
+            color: var(--text-on-ink-dim);
+            max-width: 46ch;
+            margin: 0 0 34px;
+        }
+
+        .hero-ctas {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            flex-wrap: wrap;
+            margin-bottom: 34px;
+        }
+
+        .btn {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14.5px;
+            padding: 14px 26px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0) scale(0.97);
+        }
+
+        .btn-amber {
+            background: var(--amber);
+            color: var(--ink);
+            box-shadow: 0 14px 30px -14px rgba(232, 163, 61, 0.55);
+        }
+
+        .btn-amber:hover {
+            background: var(--amber-deep);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-on-ink);
+            border-color: var(--line-strong);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--amber);
+        }
+
+        .btn-sm {
+            padding: 10px 18px;
+            font-size: 13px;
+        }
+
+        .btn-block {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .link-arrow {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-on-ink-dim);
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            padding-bottom: 2px;
+            transition: color 0.15s ease, border-color 0.15s ease, gap 0.15s ease;
+        }
+
+        .link-arrow:hover {
+            color: var(--amber);
+            border-color: var(--amber);
+            gap: 10px;
+        }
+
+        .link-arrow span {
+            transition: transform 0.15s ease;
+        }
+
+        .link-arrow:hover span {
+            transform: translateY(2px);
+        }
+
+        .stack-note {
+            display: flex;
+            gap: 22px;
+            flex-wrap: wrap;
+        }
+
+        .stack-note div {
+            font-size: 12px;
+            color: var(--text-on-ink-dim);
+        }
+
+        .stack-note strong {
+            display: block;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--paper);
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+
+        /* ---------- hero visual: camera preview card ---------- */
+        .hero-visual {
+            position: relative;
+        }
+
+        .cam-card {
+            background: linear-gradient(160deg, #2a2632, #161419);
+            border: 1px solid var(--line-strong);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            box-shadow: 0 30px 70px -30px var(--shadow-1);
+        }
+
+        .cam-viewport {
+            aspect-ratio: 4/5;
+            border-radius: 14px;
+            overflow: hidden;
+            position: relative;
+            background:
+                radial-gradient(circle at 30% 20%, #4a3f52, transparent 55%),
+                radial-gradient(circle at 75% 70%, #3d3040, transparent 50%),
+                linear-gradient(200deg, #312b3a, #171419);
+        }
+
+        .cam-viewport::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 3px);
+            opacity: 0.4;
+        }
+
+        .cam-countdown {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 120px;
+            color: var(--paper);
+            text-shadow: 0 0 40px rgba(232, 163, 61, 0.55);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .cam-countdown span {
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.06);
+                opacity: 0.85;
+            }
+        }
+
+        .cam-badge {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            background: rgba(214, 82, 74, 0.16);
+            border: 1px solid rgba(214, 82, 74, 0.5);
+            color: #f2a8a3;
+            padding: 5px 10px 5px 8px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .cam-badge i {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--red);
+            animation: blink 1.2s steps(2, end) infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0.25;
+            }
+        }
+
+        .cam-badge-lock {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            background: rgba(232, 163, 61, 0.14);
+            border: 1px solid rgba(232, 163, 61, 0.45);
+            color: var(--amber);
+            padding: 5px 10px;
+            border-radius: 999px;
+        }
+
+        .cam-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 6px 4px;
+        }
+
+        .cam-dots {
+            display: flex;
+            gap: 7px;
+        }
+
+        .cam-dots i {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--line-strong);
+            display: block;
+        }
+
+        .cam-dots i.on {
+            background: var(--amber);
+        }
+
+        .cam-foot .mono {
+            font-size: 11.5px;
+            color: var(--text-on-ink-dim);
+        }
+
+        /* ---------- section shell ---------- */
+        section {
+            padding: 90px 0;
+            border-top: 1px solid var(--line);
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 24px;
+            margin-bottom: 52px;
+            flex-wrap: wrap;
+        }
+
+        .section-head h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(34px, 4vw, 48px);
+            margin: 0;
+            letter-spacing: 0.01em;
+            text-wrap: balance;
+        }
+
+        .section-head p {
+            max-width: 42ch;
+            color: var(--text-on-ink-dim);
+            font-size: 14.5px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .kicker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--amber);
+            margin: 0 0 10px;
+        }
+
+        /* ---------- flow: filmstrip of 4 frames ---------- */
+        .filmstrip {
+            background:
+                repeating-linear-gradient(90deg, var(--ink-softer) 0px, var(--ink-softer) 10px, transparent 10px, transparent 24px) top / 100% 12px no-repeat,
+                repeating-linear-gradient(90deg, var(--ink-softer) 0px, var(--ink-softer) 10px, transparent 10px, transparent 24px) bottom / 100% 12px no-repeat;
+            padding: 22px 0;
+        }
+
+        .flow {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2px;
+            background: var(--ink);
+            position: relative;
+        }
+
+        @media (max-width:1050px) {
+            .flow {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width:640px) {
+            .flow {
+                grid-template-columns: none;
+                grid-auto-flow: column;
+                grid-auto-columns: 84%;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                gap: 14px;
+                padding-bottom: 6px;
+            }
+        }
+
+        .screen {
+            background: var(--ink-soft);
+            border: 1px solid var(--line);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            scroll-snap-align: center;
+        }
+
+        .screen:hover {
+            border-color: var(--line-strong);
+            transform: translateY(-3px);
+            box-shadow: 0 20px 40px -26px var(--shadow-2);
+        }
+
+        .screen:active {
+            transform: translateY(-1px) scale(0.99);
+        }
+
+        @media (max-width:640px) {
+            .screen {
+                border-radius: var(--radius-md);
+            }
+        }
+
+        .screen-chrome {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        .screen-chrome i {
+            width: 5px;
+            height: 8px;
+            border-radius: 1px;
+            background: var(--line-strong);
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+        }
+
+        .screen-chrome span {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-on-ink-dim);
+            letter-spacing: 0.04em;
+        }
+
+        .screen-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 16px 0;
+        }
+
+        .step-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--amber);
+            border: 1px solid rgba(232, 163, 61, 0.4);
+            border-radius: 999px;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: none;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .screen-label h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14.5px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .screen-body {
+            padding: 16px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Home screen mock */
+        .mock-home {
+            background: radial-gradient(circle at 50% 0%, #2c2833, #17151b 70%);
+            border-radius: var(--radius-md);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 34px 18px;
+            gap: 14px;
+        }
+
+        .mock-logo {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 2px solid var(--amber);
+            position: relative;
+        }
+
+        .mock-logo::after {
+            content: "";
+            position: absolute;
+            inset: 8px;
+            border-radius: 50%;
+            background: var(--amber);
+        }
+
+        .mock-home .display {
+            font-size: 22px;
+            letter-spacing: 0.03em;
+        }
+
+        .mock-home p {
+            font-size: 11.5px;
+            color: var(--text-on-ink-dim);
+            margin: 0;
+            max-width: 22ch;
+            line-height: 1.5;
+        }
+
+        .mock-lock {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--amber);
+            margin-top: 6px;
+        }
+
+        /* Camera screen mock */
+        .mock-cam {
+            flex: 1;
+            border-radius: var(--radius-md);
+            background:
+                radial-gradient(circle at 30% 25%, #45394f, transparent 55%),
+                radial-gradient(circle at 75% 75%, #362c3f, transparent 55%),
+                #1c1922;
+            position: relative;
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mock-cam .num {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 56px;
+            color: var(--paper);
+            text-shadow: 0 0 24px rgba(232, 163, 61, 0.5);
+        }
+
+        .mock-cam .tally {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .mock-cam .tally i {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--line-strong);
+        }
+
+        .mock-cam .tally i.on {
+            background: var(--amber);
+        }
+
+        .mock-cam .rec {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9.5px;
+            color: #f2a8a3;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .mock-cam .rec i {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--red);
+        }
+
+        /* Editor screen mock */
+        .mock-editor {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1.3fr 0.9fr;
+            gap: 10px;
+        }
+
+        .mock-canvas {
+            background: var(--paper-dim);
+            border-radius: var(--radius-sm);
+            padding: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .mock-canvas .slot {
+            aspect-ratio: 1/1;
+            border-radius: 5px;
+            background: linear-gradient(150deg, #c9b79a, #a99274);
+        }
+
+        .mock-canvas .slot:nth-child(2) {
+            background: linear-gradient(150deg, #b6a9c4, #8f7ea6);
+        }
+
+        .mock-canvas .slot:nth-child(3) {
+            background: linear-gradient(150deg, #9fb8a8, #79987f);
+        }
+
+        .mock-canvas .slot:nth-child(4) {
+            background: linear-gradient(150deg, #d19a8a, #b06e5c);
+        }
+
+        .mock-side {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .chip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--line-strong);
+            color: var(--text-on-ink-dim);
+        }
+
+        .chip.on {
+            border-color: var(--amber);
+            color: var(--amber);
+        }
+
+        .layer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: auto;
+        }
+
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10.5px;
+            color: var(--text-on-ink-dim);
+        }
+
+        .layer-item i {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--amber);
+        }
+
+        /* Result screen mock */
+        .mock-result {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 0 4px;
+        }
+
+        .polaroid {
+            background: var(--paper);
+            padding: 8px 8px 22px;
+            border-radius: 4px;
+            transform: rotate(-3deg);
+            box-shadow: 0 14px 30px -12px var(--shadow-1);
+            width: 78%;
+        }
+
+        .polaroid .photo {
+            aspect-ratio: 4/5;
+            border-radius: 2px;
+            background:
+                linear-gradient(160deg, #e2b98a, #c98a6a 40%, #8c6a8f 100%);
+        }
+
+        .mock-result .mono {
+            font-size: 9.5px;
+            color: var(--amber);
+            margin-top: 10px;
+        }
+
+        .screen-actions {
+            display: flex;
+            gap: 8px;
+            padding: 0 16px 16px;
+        }
+
+        /* ---------- privacy strip ---------- */
+        .privacy-strip {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 56px;
+            align-items: center;
+        }
+
+        @media (max-width:900px) {
+            .privacy-strip {
+                grid-template-columns: 1fr;
+                gap: 36px;
+            }
+        }
+
+        .diagram {
+            background: var(--ink-soft);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 34px 28px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .diagram-row {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            flex-wrap: wrap;
+            position: relative;
+        }
+
+        .diagram-node {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            background: rgba(232, 163, 61, 0.1);
+            border: 1px solid rgba(232, 163, 61, 0.4);
+            color: var(--paper);
+            padding: 10px 14px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+
+        .diagram-arrow {
+            color: var(--text-on-ink-dim);
+            padding: 0 10px;
+            font-size: 14px;
+        }
+
+        .diagram-node.blocked {
+            background: rgba(214, 82, 74, 0.08);
+            border-color: rgba(214, 82, 74, 0.4);
+            color: #e8a29c;
+            text-decoration: line-through;
+            text-decoration-color: rgba(214, 82, 74, 0.7);
+        }
+
+        .diagram-row.denied {
+            margin-top: 14px;
+        }
+
+        .stamp {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            color: var(--red);
+            border: 1.5px solid var(--red);
+            border-radius: 4px;
+            padding: 3px 9px;
+            transform: rotate(-7deg);
+            margin-left: 16px;
+            opacity: 0.85;
+            white-space: nowrap;
+        }
+
+        .diagram-caption {
+            margin-top: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-on-ink-dim);
+            letter-spacing: 0.06em;
+        }
+
+        .diagram-caption strong {
+            color: var(--amber);
+        }
+
+        .privacy-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .privacy-list li {
+            display: flex;
+            gap: 14px;
+            font-size: 14px;
+            color: var(--text-on-ink-dim);
+            line-height: 1.55;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .privacy-list li:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .privacy-list b {
+            color: var(--paper);
+            font-weight: 600;
+            display: block;
+            margin-bottom: 2px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .pl-num {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--amber);
+            font-size: 13px;
+            flex: none;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ---------- stack footer ---------- */
+        .stack-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 26px;
+        }
+
+        .stack-chip {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            padding: 8px 14px;
+            border: 1px solid var(--line-strong);
+            border-radius: 999px;
+            color: var(--text-on-ink-dim);
+            transition: border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .stack-chip:hover {
+            border-color: var(--amber);
+            color: var(--amber);
+        }
+
+        footer {
+            padding: 44px 0 60px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        footer .mono {
+            font-size: 11.5px;
+            color: var(--text-on-ink-dim);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="rail left" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="rail right" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="wrap">
+
+        <nav class="topnav">
+            <div class="brand"><span class="brand-mark"></span>BOOTH.</div>
+            <div class="navtag"><span class="dot-live"></span>local-first · no backend · v1.0 preview</div>
+        </nav>
+
+        <header class="hero">
+            <div>
+                <p class="eyebrow">Personal Web Photo Booth</p>
+                <h1>Ambil foto.<br>Edit di sini.<br><em>Tidak pernah</em> diunggah.</h1>
+                <p>Photo booth berbasis browser yang menangkap, mengedit, dan mencetak momen kamu — semuanya di
+                    perangkat sendiri. Tidak ada akun, tidak ada server, tidak ada jejak.</p>
+                <div class="hero-ctas">
+                    <button class="btn btn-amber">Mulai Sesi</button>
+                    <a href="#privacy" class="link-arrow">Lihat arsitektur privasi <span>↓</span></a>
+                </div>
+                <div class="stack-note">
+                    <div><strong>React + Vite</strong>Client-side rendering</div>
+                    <div><strong>Konva + Canvas</strong>Editor & final render</div>
+                    <div><strong>IndexedDB</strong>Frame &amp; favorit lokal</div>
+                </div>
+            </div>
+
+            <div class="hero-visual">
+                <div class="cam-card">
+                    <div class="cam-viewport">
+                        <span class="cam-badge"><i></i>LIVE PREVIEW</span>
+                        <span class="cam-badge-lock">🔒 lokal</span>
+                        <div class="cam-countdown"><span>3</span></div>
+                    </div>
+                    <div class="cam-foot">
+                        <div class="cam-dots">
+                            <i class="on"></i><i></i><i></i><i></i>
+                        </div>
+                        <span class="mono">Foto 1 / 4</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section id="flow">
+            <div class="section-head">
+                <div>
+                    <p class="kicker">User journey</p>
+                    <h2>Empat bingkai, satu gulungan film.</h2>
+                </div>
+                <p>Dari kamera sampai file terunduh — setiap langkah terjadi di browser yang sama, tanpa round-trip ke
+                    server mana pun.</p>
+            </div>
+
+            <div class="filmstrip">
+                <div class="flow">
+
+                    <!-- HOME -->
+                    <div class="screen">
+                        <div class="screen-chrome">
+                            <i></i><i></i><i></i>
+                            <span>/home</span>
+                        </div>
+                        <div class="screen-label">
+                            <span class="step-num">01</span>
+                            <h3>Home</h3>
+                        </div>
+                        <div class="screen-body">
+                            <div class="mock-home">
+                                <span class="mock-logo"></span>
+                                <span class="display">PERSONAL BOOTH</span>
+                                <p>Buat momen kamu secara privat, langsung dari browser.</p>
+                                <span class="mock-lock">🔒 diproses lokal</span>
+                            </div>
+                        </div>
+                        <div class="screen-actions">
+                            <button class="btn btn-amber btn-sm btn-block">Mulai</button>
+                        </div>
+                    </div>
+
+                    <!-- CAMERA -->
+                    <div class="screen">
+                        <div class="screen-chrome">
+                            <i></i><i></i><i></i>
+                            <span>/booth/camera</span>
+                        </div>
+                        <div class="screen-label">
+                            <span class="step-num">02</span>
+                            <h3>Camera</h3>
+                        </div>
+                        <div class="screen-body">
+                            <div class="mock-cam">
+                                <span class="rec"><i></i>CAM ON</span>
+                                <span class="num">3</span>
+                                <div class="tally">
+                                    <i class="on"></i><i></i><i></i><i></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="screen-actions">
+                            <button class="btn btn-ghost btn-sm btn-block">Batal</button>
+                        </div>
+                    </div>
+
+                    <!-- EDITOR -->
+                    <div class="screen">
+                        <div class="screen-chrome">
+                            <i></i><i></i><i></i>
+                            <span>/editor</span>
+                        </div>
+                        <div class="screen-label">
+                            <span class="step-num">03</span>
+                            <h3>Editor</h3>
+                        </div>
+                        <div class="screen-body">
+                            <div class="mock-editor">
+                                <div class="mock-canvas">
+                                    <div class="slot"></div>
+                                    <div class="slot"></div>
+                                    <div class="slot"></div>
+                                    <div class="slot"></div>
+                                </div>
+                                <div class="mock-side">
+                                    <div class="chip-row">
+                                        <span class="chip on">Film</span>
+                                        <span class="chip">Vintage</span>
+                                        <span class="chip">Minimal</span>
+                                    </div>
+                                    <div class="layer-list">
+                                        <div class="layer-item"><i></i>Teks</div>
+                                        <div class="layer-item"><i></i>Logo</div>
+                                        <div class="layer-item"><i></i>Dekorasi</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="screen-actions">
+                            <button class="btn btn-ghost btn-sm btn-block">Undo · Redo · Filter</button>
+                        </div>
+                    </div>
+
+                    <!-- RESULT -->
+                    <div class="screen">
+                        <div class="screen-chrome">
+                            <i></i><i></i><i></i>
+                            <span>/result</span>
+                        </div>
+                        <div class="screen-label">
+                            <span class="step-num">04</span>
+                            <h3>Result</h3>
+                        </div>
+                        <div class="screen-body">
+                            <div class="mock-result">
+                                <div class="polaroid">
+                                    <div class="photo"></div>
+                                </div>
+                                <span class="mono">🔒 diproses lokal</span>
+                            </div>
+                        </div>
+                        <div class="screen-actions">
+                            <button class="btn btn-amber btn-sm btn-block">Unduh JPG</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section id="privacy">
+            <div class="section-head">
+                <div>
+                    <p class="kicker">Privacy architecture</p>
+                    <h2>Server tidak pernah melihat fotomu.</h2>
+                </div>
+            </div>
+
+            <div class="privacy-strip">
+                <div class="diagram">
+                    <div class="diagram-row">
+                        <span class="diagram-node">Kamera</span>
+                        <span class="diagram-arrow">→</span>
+                        <span class="diagram-node">Memori</span>
+                        <span class="diagram-arrow">→</span>
+                        <span class="diagram-node">Canvas</span>
+                        <span class="diagram-arrow">→</span>
+                        <span class="diagram-node">Unduhan</span>
+                    </div>
+                    <div class="diagram-row denied">
+                        <span class="diagram-node blocked">Server</span>
+                        <span class="diagram-arrow">✕</span>
+                        <span class="diagram-node blocked">Database Foto</span>
+                        <span class="stamp">TIDAK ADA JALUR</span>
+                    </div>
+                    <p class="diagram-caption"><strong>NO PHOTO UPLOAD</strong> — seluruh proses capture, edit, dan
+                        render berjalan di dalam browser milikmu.</p>
+                </div>
+
+                <ul class="privacy-list">
+                    <li><span class="pl-num">01</span>
+                        <div><b>Kamera aktif seperlunya</b>Stream hanya berjalan saat mode kamera dibuka, dan langsung
+                            dihentikan begitu selesai.</div>
+                    </li>
+                    <li><span class="pl-num">02</span>
+                        <div><b>Tidak ada upload otomatis</b>Foto tidak pernah dikirim ke server atau API pihak ketiga
+                            selama alur normal.</div>
+                    </li>
+                    <li><span class="pl-num">03</span>
+                        <div><b>Storage lokal terbatas</b>localStorage hanya untuk preferensi; foto & frame custom
+                            disimpan di IndexedDB perangkat.</div>
+                    </li>
+                    <li><span class="pl-num">04</span>
+                        <div><b>Cleanup otomatis</b>Object URL, blob sementara, dan state editor dibersihkan setiap sesi
+                            selesai.</div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="stack-chips">
+                <span class="stack-chip">React</span>
+                <span class="stack-chip">TypeScript</span>
+                <span class="stack-chip">Vite</span>
+                <span class="stack-chip">Zustand</span>
+                <span class="stack-chip">Konva.js</span>
+                <span class="stack-chip">Canvas API</span>
+                <span class="stack-chip">IndexedDB</span>
+                <span class="stack-chip">PWA / Service Worker</span>
+            </div>
+        </section>
+
+        <footer>
+            <span class="mono">BOOTH. — static preview · dibangun dari PRD v1.0</span>
+            <span class="mono">photo-booth-2026-08-12-preview.html</span>
+        </footer>
+
+    </div>
+
+</body>
+
+</html>
