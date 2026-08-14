@@ -311,8 +311,8 @@ function App() {
                     <div className="footer-nav">
                         <div className="footer-nav-col">
                             <span className="footer-nav-title">Navigasi</span>
-                            <a href="beranda" onClick={(e) => { e.preventDefault(); setScreen('home'); }}>Beranda</a>
-                            <a href="#privacy" onClick={(e) => { if (screen !== 'home') { e.preventDefault(); setScreen('home'); setTimeout(() => document.getElementById('privacy')?.scrollIntoView({ behavior: 'smooth' }), 150); } }}>privasi</a>
+                            <a href="#beranda" onClick={(e) => { if (screen !== 'home') { e.preventDefault(); setScreen('home'); setTimeout(() => document.getElementById('beranda')?.scrollIntoView({ behavior: 'smooth' }), 150); } }}>Beranda</a>
+                            <a href="#privacy" onClick={(e) => { if (screen !== 'home') { e.preventDefault(); setScreen('home'); setTimeout(() => document.getElementById('privacy')?.scrollIntoView({ behavior: 'smooth' }), 150); } }}>Privasi</a>
                             <a href="#flow" onClick={(e) => { if (screen !== 'home') { e.preventDefault(); setScreen('home'); setTimeout(() => document.getElementById('flow')?.scrollIntoView({ behavior: 'smooth' }), 150); } }}>Cara Kerja</a>
                         </div>
                         <div className="footer-nav-col">
@@ -323,8 +323,7 @@ function App() {
                         </div>
                     </div>
                     <div className="footer-bottom">
-                        <span className="mono">© 2026 BOOTH. · By Mochammad Rizky</span>
-                        <span className="mono">Diproses sepenuhnya di perangkatmu </span>
+                        <span className="mono">© 2026 BOOTH. By Mochammad Rizky</span>
                     </div>
                 </footer>
             </div>

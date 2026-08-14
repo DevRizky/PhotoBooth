@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useBoothStore, PRESET_FRAMES } from '../stores/boothStore';
+import { useBoothStore, PRESET_FRAMES, STRIP_TEMPLATES } from '../stores/boothStore';
 import { Download, RefreshCw, Edit } from 'lucide-react';
 
 export const FinalResult: React.FC = () => {
@@ -11,6 +11,7 @@ export const FinalResult: React.FC = () => {
         backgroundType,
         backgroundValue,
         backgroundValue2,
+        selectedTemplateId,
         setScreen,
         resetSession
     } = useBoothStore();
@@ -39,19 +40,33 @@ export const FinalResult: React.FC = () => {
                 // Apply overall scaling matching target scale
                 ctx.scale(targetScale, targetScale);
 
-                // 1. Draw Background
-                if (backgroundType === 'solid') {
-                    ctx.fillStyle = backgroundValue;
-                    ctx.fillRect(0, 0, activeFrame.width, activeFrame.height);
-                } else {
-                    const gradient = ctx.createLinearGradient(0, 0, 0, activeFrame.height);
-                    gradient.addColorStop(0, backgroundValue);
-                    gradient.addColorStop(1, backgroundValue2 || backgroundValue);
-                    ctx.fillStyle = gradient;
-                    ctx.fillRect(0, 0, activeFrame.width, activeFrame.height);
+                // 1. Draw Strip Template (below background and photos)
+                const activeTemplate = STRIP_TEMPLATES.find(t => t.id === selectedTemplateId);
+                if (activeTemplate) {
+                    const tplImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+                        const el = new Image();
+                        el.src = activeTemplate.src;
+                        el.onload = () => resolve(el);
+                        el.onerror = reject;
+                    });
+                    ctx.drawImage(tplImg, 0, 0, activeFrame.width, activeFrame.height);
                 }
 
-                // 2. Draw Photos into slots
+                // 2. Draw Background (only when no strip template is active)
+                if (!activeTemplate) {
+                    if (backgroundType === 'solid') {
+                        ctx.fillStyle = backgroundValue;
+                        ctx.fillRect(0, 0, activeFrame.width, activeFrame.height);
+                    } else {
+                        const gradient = ctx.createLinearGradient(0, 0, 0, activeFrame.height);
+                        gradient.addColorStop(0, backgroundValue);
+                        gradient.addColorStop(1, backgroundValue2 || backgroundValue);
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(0, 0, activeFrame.width, activeFrame.height);
+                    }
+                }
+
+                // 3. Draw Photos into slots
                 for (let i = 0; i < activeFrame.slots.length; i++) {
                     const slot = activeFrame.slots[i];
                     const photo = photos[i];
@@ -131,7 +146,7 @@ export const FinalResult: React.FC = () => {
                     ctx.restore();
                 }
 
-                // 3. Draw Text, Sticker, and Image Layers
+                // 4. Draw Text, Sticker, and Image Layers
                 for (const layer of layers) {
                     ctx.save();
                     
@@ -185,7 +200,7 @@ export const FinalResult: React.FC = () => {
                 URL.revokeObjectURL(resultBlobUrl);
             }
         };
-    }, [photos, selectedFrameId, layers, appliedFilter, backgroundType, backgroundValue, backgroundValue2, exportFormat]);
+    }, [photos, selectedFrameId, layers, appliedFilter, backgroundType, backgroundValue, backgroundValue2, selectedTemplateId, exportFormat]);
 
     const handleDownload = () => {
         const ext = exportFormat === 'image/png' ? 'png' : exportFormat === 'image/webp' ? 'webp' : 'jpg';

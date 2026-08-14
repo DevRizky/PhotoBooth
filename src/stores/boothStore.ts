@@ -63,6 +63,15 @@ export const PRESET_FRAMES: FrameConfig[] = [
     }
 ];
 
+export const STRIP_TEMPLATES = [
+    { id: 'paper', name: 'Paper Classic', src: '/templates/paper.png' },
+    { id: 'ink', name: 'Ink Dark', src: '/templates/ink.png' },
+    { id: 'vintage', name: 'Vintage Wood', src: '/templates/vintage.png' },
+    { id: 'pastel', name: 'Pastel Sweet', src: '/templates/pastel.png' },
+    { id: 'sky', name: 'Daylight Sky', src: '/templates/sky.png' },
+    { id: 'sage', name: 'Green Day', src: '/templates/sage.png' }
+];
+
 export type ScreenType = 'home' | 'setup' | 'camera' | 'review' | 'editor' | 'result';
 
 interface HistoryState {
@@ -104,6 +113,8 @@ interface BoothState {
     layers: EditorLayer[];
     selectedLayerId: string | null;
     appliedFilter: string;
+    selectedTemplateId: string | null;
+    setSelectedTemplateId: (id: string | null) => void;
     setAppliedFilter: (filter: string) => void;
     addTextLayer: (text?: string) => void;
     addStickerLayer: (emoji: string) => void;
@@ -180,6 +191,9 @@ export const useBoothStore = create<BoothState>((set, get) => ({
     layers: [],
     selectedLayerId: null,
     appliedFilter: 'original',
+    selectedTemplateId: null,
+    setSelectedTemplateId: (selectedTemplateId) => set({ selectedTemplateId }),
+
     setAppliedFilter: (appliedFilter) => {
         set({ appliedFilter });
         get().saveHistory();
@@ -336,6 +350,7 @@ export const useBoothStore = create<BoothState>((set, get) => ({
             layers: [],
             selectedLayerId: null,
             appliedFilter: 'original',
+            selectedTemplateId: null,
             backgroundType: defaultFrame.background.type,
             backgroundValue: defaultFrame.background.value,
             backgroundValue2: defaultFrame.background.value2 || '',

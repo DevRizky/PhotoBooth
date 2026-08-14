@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Rect, Text as KonvaText, Image as KonvaImage, Group, Transformer } from 'react-konva';
-import { useBoothStore, PRESET_FRAMES } from '../stores/boothStore';
-import { Undo, Redo, Type, Trash2, ArrowRight, Upload } from 'lucide-react';
+import { useBoothStore, PRESET_FRAMES, STRIP_TEMPLATES } from '../stores/boothStore';
+import { Undo, Redo, Trash2, ArrowRight } from 'lucide-react';
 
 const FILTER_PRESETS = [
     { id: 'original', name: 'Original' },
@@ -10,8 +10,6 @@ const FILTER_PRESETS = [
     { id: 'cool', name: 'Cool (Cyan)' },
     { id: 'warm', name: 'Warm (Gold)' }
 ];
-
-const STICKER_LIST = ['❤️', '⭐', '🥳', '📸', '✨', '🔥', '👑', '😎', '🍕', '🎉', '💡', '🌈'];
 
 const BACKGROUND_COLORS = [
     '#f6f1e7', // paper
@@ -122,6 +120,22 @@ const ImageLoader: React.FC<{
     );
 };
 
+// Component to render the selected strip template as the background
+const StripTemplateImage: React.FC<{ src: string; width: number; height: number }> = ({ src, width, height }) => {
+    const [imageEl, setImageEl] = useState<HTMLImageElement | null>(null);
+
+    useEffect(() => {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => setImageEl(img);
+    }, [src]);
+
+    if (!imageEl) return null;
+
+    // Stretch template to fill the whole frame canvas
+    return <KonvaImage image={imageEl} x={0} y={0} width={width} height={height} />;
+};
+
 // Component to render an uploaded image inside the Konva Stage
 const InlineImageLayer: React.FC<{
     layer: { id: string; type: 'image'; x: number; y: number; src: string; width: number; height: number; rotation: number; opacity: number };
@@ -184,9 +198,6 @@ export const InteractiveEditor: React.FC = () => {
         backgroundType,
         backgroundValue,
         backgroundValue2,
-        addTextLayer,
-        addStickerLayer,
-        addImageLayer,
         updateLayer,
         deleteLayer,
         setSelectedLayerId,
@@ -194,11 +205,12 @@ export const InteractiveEditor: React.FC = () => {
         setBackground,
         undo,
         redo,
-        setScreen
+        setScreen,
+        selectedTemplateId,
+        setSelectedTemplateId
     } = useBoothStore();
 
-    const [activeTab, setActiveTab] = useState<'bg' | 'filters' | 'decor'>('bg');
-    const imageUploadRef = useRef<HTMLInputElement>(null);
+    const [activeTab, setActiveTab] = useState<'bg' | 'filters' | 'templates'>('bg');
 
     // Find active frame spec
     const activeFrame = PRESET_FRAMES.find(f => f.id === selectedFrameId) || PRESET_FRAMES[0];
@@ -220,14 +232,17 @@ export const InteractiveEditor: React.FC = () => {
 
     // Handle background input changes
     const handleColorClick = (color: string) => {
+        setSelectedTemplateId(null); // leaving template mode
         setBackground('solid', color);
     };
 
     const handleCustomColor = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSelectedTemplateId(null);
         setBackground('solid', e.target.value);
     };
 
     const handleGradientChange = (col1: string, col2: string) => {
+        setSelectedTemplateId(null);
         setBackground('gradient', col1, col2);
     };
 
@@ -273,22 +288,38 @@ export const InteractiveEditor: React.FC = () => {
                                 }}
                             >
                                 <Layer>
-                                    {/* Background color */}
-                                    {backgroundType === 'solid' ? (
-                                        <Rect
-                                            width={activeFrame.width}
-                                            height={activeFrame.height}
-                                            fill={backgroundValue}
-                                        />
-                                    ) : (
-                                        <Rect
-                                            width={activeFrame.width}
-                                            height={activeFrame.height}
-                                            fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-                                            fillLinearGradientEndPoint={{ x: 0, y: activeFrame.height }}
-                                            fillLinearGradientColorStops={[0, backgroundValue, 1, backgroundValue2]}
-                                        />
-                                    )}
+                                    {/* Strip template background replaces solid/gradient background */}
+                                    {(() => {
+                                        const tpl = STRIP_TEMPLATES.find(t => t.id === selectedTemplateId);
+                                        if (tpl) {
+                                            return (
+                                                <StripTemplateImage
+                                                    src={tpl.src}
+                                                    width={activeFrame.width}
+                                                    height={activeFrame.height}
+                                                />
+                                            );
+                                        }
+                                        // No template selected — fall back to solid/gradient
+                                        if (backgroundType === 'solid') {
+                                            return (
+                                                <Rect
+                                                    width={activeFrame.width}
+                                                    height={activeFrame.height}
+                                                    fill={backgroundValue}
+                                                />
+                                            );
+                                        }
+                                        return (
+                                            <Rect
+                                                width={activeFrame.width}
+                                                height={activeFrame.height}
+                                                fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+                                                fillLinearGradientEndPoint={{ x: 0, y: activeFrame.height }}
+                                                fillLinearGradientColorStops={[0, backgroundValue, 1, backgroundValue2]}
+                                            />
+                                        );
+                                    })()}
 
                                     {/* Render photo slots */}
                                     {activeFrame.slots.map((slot, index) => {
@@ -553,10 +584,10 @@ export const InteractiveEditor: React.FC = () => {
                             Filter
                         </button>
                         <button
-                            className={`tab-btn ${activeTab === 'decor' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('decor')}
+                            className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('templates')}
                         >
-                            Dekorasi
+                            Template
                         </button>
                     </div>
 
@@ -624,70 +655,26 @@ export const InteractiveEditor: React.FC = () => {
                             </div>
                         )}
 
-                        {/* TAB 3: Decor (Stickers, Text & Image Upload) */}
-                        {activeTab === 'decor' && (
-                            <>
-                                <button className="btn btn-ghost btn-block" onClick={() => addTextLayer()}>
-                                    <Type size={16} /> Tambah Teks Baru
-                                </button>
-
-                                {/* Image Upload as Sticker */}
-                                <div className="form-group">
-                                    <label>Upload Gambar Sendiri</label>
-                                    <p style={{ fontSize: '12px', color: 'var(--text-on-ink-dim)', marginBottom: '10px', marginTop: '4px' }}>
-                                        Upload foto/logo/stiker dari perangkatmu — diproses lokal, tidak diunggah ke server.
-                                    </p>
-                                    <button
-                                        className="btn btn-ghost btn-block"
-                                        onClick={() => imageUploadRef.current?.click()}
-                                        style={{ borderStyle: 'dashed', gap: '8px' }}
-                                    >
-                                        <Upload size={16} /> Pilih Gambar
-                                    </button>
-                                    <input
-                                        ref={imageUploadRef}
-                                        type="file"
-                                        accept="image/*"
-                                        style={{ display: 'none' }}
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (!file) return;
-                                            const reader = new FileReader();
-                                            reader.onload = (ev) => {
-                                                const src = ev.target?.result as string;
-                                                // Load image to get natural dimensions, place at 1/4 of frame size
-                                                const img = new Image();
-                                                img.onload = () => {
-                                                    const maxW = activeFrame.width * 0.35;
-                                                    const ratio = img.height / img.width;
-                                                    const w = Math.min(img.width, maxW);
-                                                    const h = w * ratio;
-                                                    addImageLayer(src, w, h);
-                                                };
-                                                img.src = src;
-                                            };
-                                            reader.readAsDataURL(file);
-                                            // Reset so same file can be uploaded again
-                                            e.target.value = '';
-                                        }}
-                                    />
+                        {/* TAB 3: Strip Templates (ready-to-use backgrounds) */}
+                        {activeTab === 'templates' && (
+                            <div className="form-group">
+                                <label>Template Strip</label>
+                                <p style={{ fontSize: '12px', color: 'var(--text-on-ink-dim)', marginBottom: '10px', marginTop: '4px' }}>
+                                    Pilih latar strip siap pakai.
+                                </p>
+                                <div className="template-grid">
+                                    {STRIP_TEMPLATES.map((t) => (
+                                        <button
+                                            key={t.id}
+                                            className={`template-item ${selectedTemplateId === t.id ? 'active' : ''}`}
+                                            onClick={() => setSelectedTemplateId(selectedTemplateId === t.id ? null : t.id)}
+                                        >
+                                            <img src={t.src} alt={t.name} />
+                                            <span>{t.name}</span>
+                                        </button>
+                                    ))}
                                 </div>
-
-                                <div className="form-group">
-                                    <label>Tambah Stiker / Emoji</label>
-                                    <div className="stickers-grid">
-                                        {STICKER_LIST.map((sticker) => (
-                                            <div
-                                                key={sticker}
-                                                className="sticker-item"
-                                                onClick={() => addStickerLayer(sticker)}
-                                            >
-                                                {sticker}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
+                            </div>
                         )}
                     </div>
                 </div>

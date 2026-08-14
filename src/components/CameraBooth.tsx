@@ -13,7 +13,7 @@ const playSound = (type: 'beep' | 'shutter') => {
             const gain = ctx.createGain();
             osc.connect(gain);
             gain.connect(ctx.destination);
-            
+
             osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
             gain.gain.setValueAtTime(0.1, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
@@ -87,7 +87,7 @@ export const CameraBooth: React.FC = () => {
     // Initialise webcam
     useEffect(() => {
         let activeStream: MediaStream | null = null;
-        
+
         const startVideo = async () => {
             try {
                 const constraints: MediaStreamConstraints = {
@@ -95,11 +95,11 @@ export const CameraBooth: React.FC = () => {
                         ? { deviceId: { exact: selectedCameraId }, width: 1280, height: 720 }
                         : { width: 1280, height: 720 }
                 };
-                
+
                 const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
                 activeStream = mediaStream;
                 setStream(mediaStream);
-                
+
                 if (videoRef.current) {
                     videoRef.current.srcObject = mediaStream;
                 }
@@ -149,7 +149,7 @@ export const CameraBooth: React.FC = () => {
     const triggerShutter = () => {
         if (soundEnabled) playSound('shutter');
         setFlashActive(true);
-        
+
         // Brief timeout for flash visualization before frame grab
         setTimeout(() => {
             setFlashActive(false);
@@ -160,7 +160,7 @@ export const CameraBooth: React.FC = () => {
     const grabFrame = () => {
         if (!videoRef.current) return;
         const video = videoRef.current;
-        
+
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth || 1280;
         canvas.height = video.videoHeight || 720;
@@ -172,7 +172,7 @@ export const CameraBooth: React.FC = () => {
                 ctx.scale(-1, 1);
             }
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
+
             // Capture current index from ref so it is never stale
             const capturedIndex = indexRef.current;
 
@@ -184,7 +184,7 @@ export const CameraBooth: React.FC = () => {
                         blobUrl,
                         capturedAt: Date.now()
                     });
-                    
+
                     // Move to next slot
                     setCurrentPhotoIndex(capturedIndex + 1);
                 }
@@ -206,9 +206,7 @@ export const CameraBooth: React.FC = () => {
 
             <div className="cam-card">
                 <div className="cam-viewport">
-                    <span className="cam-badge"><i></i>LIVE PREVIEW</span>
-                    <span className="cam-badge-lock">🔒 lokal</span>
-                    
+
                     {/* The Camera Stream Video */}
                     <video
                         ref={videoRef}
