@@ -60,6 +60,8 @@ const playSound = (type: 'beep' | 'shutter') => {
 
 export const CameraBooth: React.FC = () => {
     const {
+        photos,
+        setPhotos,
         photoCount,
         countdownDuration,
         mirrorCamera,
@@ -83,6 +85,19 @@ export const CameraBooth: React.FC = () => {
     // Track photoCount in a ref so callbacks can read it without stale closure
     const photoCountRef = useRef<number>(photoCount);
     photoCountRef.current = photoCount;
+
+    // Clear any leftover photos from a previous session the moment a new capture
+    // sequence starts. Without this, entering the camera screen via a path that
+    // doesn't go through resetSession() (e.g. "Mulai Sesi" from Home/Navbar)
+    // leaves old photos in the store, and addPhoto() appends new ones after them —
+    // so the first slots keep showing stale images instead of the fresh capture.
+    useEffect(() => {
+        if (photos.length > 0) {
+            photos.forEach((p) => URL.revokeObjectURL(p.blobUrl));
+            setPhotos([]);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Initialise webcam
     useEffect(() => {
