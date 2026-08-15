@@ -339,6 +339,21 @@ export const InteractiveEditor: React.FC = () => {
                                         );
                                     })}
 
+                                    {/* Strip template decoration — drawn ON TOP of photos so tape/borders/overlays stay visible */}
+                                    {(() => {
+                                        const tpl = STRIP_TEMPLATES.find(t => t.id === selectedTemplateId);
+                                        if (tpl?.decorationSrc) {
+                                            return (
+                                                <StripTemplateImage
+                                                    src={tpl.decorationSrc}
+                                                    width={activeFrame.width}
+                                                    height={activeFrame.height}
+                                                />
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+
                                     {/* Render editable text & stickers layers */}
                                     {layers.map((layer) => {
                                         const isSelected = selectedLayerId === layer.id;
@@ -663,16 +678,19 @@ export const InteractiveEditor: React.FC = () => {
                                     Pilih latar strip siap pakai.
                                 </p>
                                 <div className="template-grid">
-                                    {STRIP_TEMPLATES.map((t) => (
-                                        <button
-                                            key={t.id}
-                                            className={`template-item ${selectedTemplateId === t.id ? 'active' : ''}`}
-                                            onClick={() => setSelectedTemplateId(selectedTemplateId === t.id ? null : t.id)}
-                                        >
-                                            <img src={t.src} alt={t.name} />
-                                            <span>{t.name}</span>
-                                        </button>
-                                    ))}
+                                    {STRIP_TEMPLATES
+                                        .filter(t => !t.frameId || t.frameId === selectedFrameId)
+                                        .map((t) => (
+                                            <button
+                                                key={t.id}
+                                                className={`template-item ${selectedTemplateId === t.id ? 'active' : ''}`}
+                                                onClick={() => setSelectedTemplateId(selectedTemplateId === t.id ? null : t.id)}
+                                            >
+                                                <img src={t.src} alt={t.name} />
+                                                <span>{t.name}</span>
+                                                {t.isSpecial && <span className="template-badge">✨ Hecan Spesial</span>}
+                                            </button>
+                                        ))}
                                 </div>
                             </div>
                         )}

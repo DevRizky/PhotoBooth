@@ -95,7 +95,7 @@ export const FinalResult: React.FC = () => {
                     // Calculate cover size cropping
                     const imgRatio = img.width / img.height;
                     const slotRatio = slot.width / slot.height;
-                    
+
                     let cropWidth = img.width;
                     let cropHeight = img.height;
                     let cropX = 0;
@@ -146,10 +146,23 @@ export const FinalResult: React.FC = () => {
                     ctx.restore();
                 }
 
+                // 3.5 Draw Strip Template Decoration (on top of photos, below text/sticker layers)
+                // This mirrors what the Konva editor preview already does — without this step,
+                // the decoration PNG never gets composited into the final high-res canvas.
+                if (activeTemplate?.decorationSrc) {
+                    const decoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+                        const el = new Image();
+                        el.src = activeTemplate.decorationSrc as string;
+                        el.onload = () => resolve(el);
+                        el.onerror = reject;
+                    });
+                    ctx.drawImage(decoImg, 0, 0, activeFrame.width, activeFrame.height);
+                }
+
                 // 4. Draw Text, Sticker, and Image Layers
                 for (const layer of layers) {
                     ctx.save();
-                    
+
                     // Move context to layer origin
                     ctx.translate(layer.x, layer.y);
                     ctx.rotate((layer.rotation * Math.PI) / 180);
@@ -206,7 +219,7 @@ export const FinalResult: React.FC = () => {
         const ext = exportFormat === 'image/png' ? 'png' : exportFormat === 'image/webp' ? 'webp' : 'jpg';
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
-        
+
         const link = document.createElement('a');
         link.download = `photo-booth-${dateStr}-${timeStr}.${ext}`;
         link.href = resultBlobUrl;
@@ -281,7 +294,7 @@ export const FinalResult: React.FC = () => {
                     </>
                 )}
             </div>
-            
+
             {/* Adding basic spin animation in JS since index.css doesn't have spin animation */}
             <style>{`
                 @keyframes spin {

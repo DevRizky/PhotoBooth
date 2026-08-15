@@ -63,13 +63,32 @@ export const PRESET_FRAMES: FrameConfig[] = [
     }
 ];
 
-export const STRIP_TEMPLATES = [
+export interface StripTemplate {
+    id: string;
+    name: string;
+    src: string;
+    frameId?: string;        // kalau diisi, template ini cuma muncul untuk frame ini
+    decorationSrc?: string;  // PNG transparan, digambar di atas foto
+    isSpecial?: boolean;     // penanda badge "event khusus" di UI
+}
+
+export const STRIP_TEMPLATES: StripTemplate[] = [
     { id: 'paper', name: 'Paper Classic', src: '/templates/paper.png' },
     { id: 'ink', name: 'Ink Dark', src: '/templates/ink.png' },
     { id: 'vintage', name: 'Vintage Wood', src: '/templates/vintage.png' },
     { id: 'pastel', name: 'Pastel Sweet', src: '/templates/pastel.png' },
     { id: 'sky', name: 'Daylight Sky', src: '/templates/sky.png' },
-    { id: 'sage', name: 'Green Day', src: '/templates/sage.png' }
+    { id: 'sage', name: 'Green Day', src: '/templates/sage.png' },
+
+    // Template event khusus — hanya muncul saat frame 2-foto (vintage-dual) dipilih
+    {
+        id: 'event-heca',
+        name: 'Heca Spesial',
+        frameId: 'vintage-dual',              // ← BALIKIN lagi, supaya cuma muncul di frame 2-foto
+        src: '/templates/pastel.png',         // ← GANTI dari vintage.png ke pastel.png
+        decorationSrc: '/templates/heca.png',
+        isSpecial: true
+    }
 ];
 
 export type ScreenType = 'home' | 'setup' | 'camera' | 'review' | 'editor' | 'result';
